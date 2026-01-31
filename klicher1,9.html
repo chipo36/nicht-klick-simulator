@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Nicht Klick Simulator v1.96</title>
+<style>
+body { margin:0; font-family:'Segoe UI', sans-serif; background:#111; color:#fff; overflow:hidden; }
+#loginScreen { display:flex; justify-content:center; align-items:center; height:100vh; background:#111; }
+#loginBox { background: rgba(34,34,34,0.95); padding:40px; border-radius:20px; text-align:center; box-shadow:0 0 30px #000; width:320px; border:4px solid #0cf; }
+input { margin:8px 0; padding:12px; font-size:16px; border-radius:8px; border:none; width:90%; background:#222; color:#fff; }
+button { padding:12px 22px; font-size:16px; border:none; border-radius:12px; cursor:pointer; background:#0cf; color:#000; margin:6px; font-weight:bold; transition:0.2s; }
+button:hover { background:#09f; }
+#error { color:red; min-height:20px; margin-top:10px; text-align:center; }
+h1 { margin:5px; text-align:center; }
+#money, #playerName, #gems { text-align:center; font-weight:bold; margin:5px; text-shadow:0 0 15px #0f0; font-size:2rem; }
+
+#gameScreen { display:flex; width:100vw; height:100vh; }
+#leftPanel { flex:1; min-width:400px; display:flex; flex-direction:column; align-items:center; overflow-y:auto; padding:10px; }
+#rightPanel { flex-shrink:0; width:280px; height:100%; background: rgba(0,0,0,0.8); border:4px solid gold; border-radius:15px; box-shadow:0 0 30px gold; padding:10px; margin:10px; overflow-y:auto; }
+
+.section { background: rgba(34,34,34,0.9); padding:15px 20px; margin:10px 0; border-radius:20px; width:90%; max-width:450px; box-shadow:0 0 20px #000; position:relative; }
+.section h2 { margin-top:0; text-align:center; }
+.section.labor { border:4px solid #a64ca6; box-shadow:0 0 20px #a64ca6; }
+.section.upgrades { border:4px solid #0cf; box-shadow:0 0 20px #0cf; }
+.section.rebirths { border:4px solid red; box-shadow:0 0 20px red; }
+button.canBuy { box-shadow:0 0 20px #0f0; }
+button.rebirthBtn { background:#c22; box-shadow:0 0 10px #f33; }
+
+#board { list-style:none; padding:0; margin:0; }
+#board li { margin:5px 0; text-align:center; }
+#board li.top1 { color: gold; font-weight:bold; }
+#board li.top2 { color: silver; font-weight:bold; }
+#board li.top3 { color: #cd7f32; font-weight:bold; }
+
+.mouse-fall { position:absolute; font-size:20px; pointer-events:none; animation:fall 1s linear forwards; }
+@keyframes fall { 0%{transform:translateY(0) rotate(0deg); opacity:1;} 100%{transform:translateY(100vh) rotate(360deg); opacity:0;} }
+
+#bgCanvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; }
+
+#statsPanel { width:90%; max-width:450px; background: rgba(20,20,20,0.9); border-radius:15px; padding:10px; margin-bottom:10px; text-align:center; box-shadow:0 0 20px #0f0; }
+#statsPanel div { margin:5px 0; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+    <div id="loginBox">
+        <h2>Nicht Klick Simulator</h2>
+        <input type="text" id="username" placeholder="Benutzername" maxlength="12"><br>
+        <input type="password" id="password" placeholder="3-stelliges Passwort" maxlength="3"><br>
+        <button onclick="register()">Registrieren / Neuer Account</button>
+        <button onclick="login()">Anmelden / Fortsetzen</button>
+        <div id="error"></div>
+    </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen" style="display:none;">
+    <canvas id="bgCanvas"></canvas>
+    <div id="leftPanel">
+        <h1 id="title">Nicht Klick Simulator v1.96</h1>
+        <div id="playerName"></div>
+        <div id="money">0 €</div>
+        <div id="gems">💎 0</div>
+
+        <!-- STATS PANEL -->
+        <div id="statsPanel">
+            <div id="statClickPower">Klick-Power: 1</div>
+            <div id="statProduction">Auto-Produktion: 0</div>
+            <div id="statRebirthBonus">Rebirth-Multiplikator: 1x</div>
+            <div id="statGems">Gems: 0</div>
+            <div id="statTotalClicks">Total Clicks: 0</div>
+        </div>
+
+        <button onclick="manualClick()" style="font-size:1.8rem; padding:15px 40px; margin:10px;">KLICK</button>
+
+        <div class="section upgrades">
+            <h2>Klick-Upgrades</h2>
+            <button id="click1" onclick="buyClick(1)">+1 Klick (<span></span>)</button>
+            <button id="click5" onclick="buyClick(5)">+5 Klick (<span></span>)</button>
+            <button id="click10" onclick="buyClick(10)">+10 Klick (<span></span>)</button>
+        </div>
+
+        <div class="section upgrades">
+            <h2>Auto-Produktion</h2>
+            <button id="prod1" onclick="buyProd(1)">+1 /s (<span></span>)</button>
+            <button id="prod5" onclick="buyProd(5)">+5 /s (<span></span>)</button>
+            <button id="prod10" onclick="buyProd(10)">+10 /s (<span></span>)</button>
+        </div>
+
+        <div class="section rebirths">
+            <h2>Wiedergeburt</h2>
+            <button class="rebirthBtn" id="rebirth1" onclick="rebirth(1)">REBIRTH x1 (<span></span>)</button>
+            <button class="rebirthBtn" id="rebirth5" onclick="rebirth(5)">REBIRTH x5 (<span></span>)</button>
+            <button class="rebirthBtn" id="rebirth10" onclick="rebirth(10)">REBIRTH x10 (<span></span>)</button>
+        </div>
+
+        <div class="section labor">
+            <h2>Labor</h2>
+            <button id="incomeBoost" onclick="buyLabor('incomeBoost')">+0.5 Income (<span></span>)</button>
+        </div>
+    </div>
+
+    <div id="rightPanel">
+        <h2>Leaderboard</h2>
+        <ol id="board"></ol>
+    </div>
+</div>
+
+<script>
+const version = "v1.96";
+let currentPlayer = null;
+let allPlayers = JSON.parse(localStorage.getItem('allPlayers') || "{}");
+let player = null;
+
+// ---------------- LOGIN / REGISTER ----------------
+function register(){
+    const name = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    const errorEl = document.getElementById('error');
+    if(!name){ errorEl.textContent="Bitte Benutzernamen eingeben!"; return; }
+    if(pass.length!==3){ errorEl.textContent="Passwort muss genau 3 Zeichen haben!"; return; }
+    if(allPlayers[name]){ errorEl.textContent="Benutzername existiert bereits!"; return; }
+
+    allPlayers[name] = {
+        password: pass,
+        money:0, clickPower:1, production:0, rebirths:0, rebirthBonus:1, totalClicks:0,
+        gems:0, incomeBoost:0,
+        costs:{click1:10, click5:100, click10:1000, prod1:50, prod5:250, prod10:2000, incomeBoost:1, rebirthBase:100}
+    };
+    saveAllPlayers();
+    startGame(name);
+}
+
+function login(){
+    const name = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    const errorEl = document.getElementById('error');
+    if(!name || !pass){ errorEl.textContent="Bitte Benutzername und Passwort eingeben!"; return; }
+    if(!allPlayers[name]){ errorEl.textContent="Benutzer existiert nicht!"; return; }
+    if(allPlayers[name].password !== pass){ errorEl.textContent="Falsches Passwort!"; return; }
+    startGame(name);
+}
+
+function startGame(name){
+    currentPlayer = name;
+    player = allPlayers[currentPlayer];
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('gameScreen').style.display='flex';
+    document.getElementById('playerName').innerText = currentPlayer;
+    updateUI();
+    updateLeaderboard();
+}
+
+// ---------------- SAVE ----------------
+function saveAllPlayers(){
+    localStorage.setItem('allPlayers', JSON.stringify(allPlayers));
+}
+
+// ---------------- UTILITY ----------------
+function format(n){
+    if(n<1000) return Math.round(n);
+    if(n<1e6) return (n/1000).toFixed(1)+'K';
+    if(n<1e9) return (n/1e6).toFixed(1)+'M';
+    return (n/1e9).toFixed(1)+'B';
+}
+
+// ---------------- ACTIONS ----------------
+function manualClick(){
+    let gain = (player.clickPower + player.incomeBoost) * player.rebirthBonus;
+    player.money += gain;
+    player.totalClicks += gain;
+    spawnMouse(false);
+    saveCurrent(); updateUI(); updateLeaderboard();
+}
+
+function buyClick(v){
+    let key='click'+v;
+    if(player.money>=player.costs[key]){
+        player.money-=player.costs[key];
+        player.clickPower+=v;
+        player.costs[key]=Math.floor(player.costs[key]*1.6);
+        saveCurrent(); updateUI();
+    }
+}
+
+function buyProd(v){
+    let key='prod'+v;
+    if(player.money>=player.costs[key]){
+        player.money-=player.costs[key];
+        player.production+=v;
+        player.costs[key]=Math.floor(player.costs[key]*1.7);
+        saveCurrent(); updateUI();
+    }
+}
+
+function rebirth(times=1){
+    let totalCost = 0;
+    let price = player.costs.rebirthBase;
+    for(let i=0;i<times;i++){
+        totalCost += Math.round(price);
+        price *= 1.10;
+    }
+    if(times===5) totalCost = Math.round(totalCost*1.5);
+    if(times===10) totalCost = Math.round(totalCost*2);
+    if(player.money < totalCost) return;
+    player.money -= totalCost;
+    for(let i=0;i<times;i++){
+        player.rebirths++;
+        player.rebirthBonus = 1 + player.rebirths*0.10;
+        player.gems += 1;
+    }
+    player.clickPower = 1;
+    player.production = 0;
+    player.costs.rebirthBase = Math.round(price);
+    saveCurrent();
+    updateUI();
+}
+
+function buyLabor(upg){
+    if(upg==='incomeBoost' && player.gems>=player.costs.incomeBoost){
+        player.gems -= player.costs.incomeBoost;
+        player.incomeBoost += 0.5;
+        player.costs.incomeBoost += 1;
+        saveCurrent(); updateUI();
+    }
+}
+
+// ---------------- AUTO-PRODUCTION ----------------
+setInterval(()=>{
+    if(!player) return;
+    let gain = (player.production + player.incomeBoost) * player.rebirthBonus;
+    player.money += gain;
+    player.totalClicks += gain;
+    saveCurrent(); updateUI(); updateLeaderboard();
+},1000);
+
+function saveCurrent(){
+    allPlayers[currentPlayer] = player;
+    saveAllPlayers();
+}
+
+// ---------------- SPAWN MOUSE ----------------
+function spawnMouse(crit=false){
+    const mouse = document.createElement('div');
+    mouse.innerText = crit ? '💥' : '🖱️';
+    mouse.className='mouse-fall';
+    mouse.style.left = Math.random()*window.innerWidth+'px';
+    document.body.appendChild(mouse);
+    setTimeout(()=>mouse.remove(),1000);
+}
+
+// ---------------- UI ----------------
+function updateUI(){
+    if(!player) return;
+    document.getElementById('title').innerText=`Nicht Klick Simulator ${version}`;
+    document.getElementById('money').innerText=format(player.money)+' €';
+    document.getElementById('gems').innerText = '💎 ' + player.gems;
+
+    // Update Stats Panel
+    document.getElementById('statClickPower').innerText = "Klick-Power: "+player.clickPower;
+    document.getElementById('statProduction').innerText = "Auto-Produktion: "+player.production;
+    document.getElementById('statRebirthBonus').innerText = "Rebirth-Multiplikator: "+player.rebirthBonus.toFixed(2)+"x";
+    document.getElementById('statGems').innerText = "Gems: "+player.gems;
+    document.getElementById('statTotalClicks').innerText = "Total Clicks: "+Math.round(player.totalClicks);
+
+    for(let key in player.costs){
+        let btn=document.getElementById(key);
+        if(!btn) continue;
+        btn.querySelector('span').innerText = format(player.costs[key]);
+        btn.classList.toggle('canBuy', (player.money>=player.costs[key] || player.gems>=player.costs[key]));
+    }
+
+    // Update Rebirth Buttons
+    document.getElementById('rebirth1').querySelector('span').innerText = format(Math.round(player.costs.rebirthBase));
+    let cost5=0, cost10=0, p = player.costs.rebirthBase;
+    for(let i=0;i<5;i++){ cost5 += Math.round(p); p*=1.1;} cost5=Math.round(cost5*1.5);
+    p=player.costs.rebirthBase; for(let i=0;i<10;i++){ cost10 += Math.round(p); p*=1.1;} cost10=Math.round(cost10*2);
+    document.getElementById('rebirth5').querySelector('span').innerText = format(cost5);
+    document.getElementById('rebirth10').querySelector('span').innerText = format(cost10);
+}
+
+// ---------------- LEADERBOARD ----------------
+function updateLeaderboard(){
+    const boardEl=document.getElementById('board');
+    let list=Object.entries(allPlayers).map(([name,data])=>({name,score:data.totalClicks}));
+    list.sort((a,b)=>b.score-a.score);
+    boardEl.innerHTML="";
+    list.slice(0,10).forEach((p,i)=>{
+        let li=document.createElement('li');
+        li.textContent=`${p.name} - ${p.score} Klicks`;
+        if(i===0) li.classList.add('top1');
+        else if(i===1) li.classList.add('top2');
+        else if(i===2) li.classList.add('top3');
+        boardEl.appendChild(li);
+    });
+}
+
+// ---------------- ANIMIERTER HINTERGRUND ----------------
+const canvas=document.getElementById('bgCanvas');
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+let stars=[]; for(let i=0;i<200;i++){stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,radius:Math.random()*2,speed:Math.random()*0.5+0.2});}
+function animateStars(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(let s of stars){
+        s.y+=s.speed; if(s.y>canvas.height){s.y=0;s.x=Math.random()*canvas.width;}
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.radius,0,Math.PI*2); ctx.fillStyle="#0cf"; ctx.fill();
+    }
+    requestAnimationFrame(animateStars);
+}
+animateStars();
+window.addEventListener('resize',()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+</script>
+
+</body>
+</html>
